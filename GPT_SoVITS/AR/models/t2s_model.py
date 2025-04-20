@@ -917,6 +917,135 @@ class Text2SemanticDecoder(nn.Module):
             return y[:, :-1], 0
         return y[:, :-1], idx
 
+    def infer_panel_stream(
+        self,
+        x:List[torch.LongTensor],  #####全部文本token
+        x_lens:torch.LongTensor,
+        prompts:torch.LongTensor,  ####参考音频token
+        bert_feature:List[torch.LongTensor],
+        max_chunk_size: int = 15,
+        top_k: int = -100,
+        top_p: int = 100,
+        early_stop_num: int = -1,
+        temperature: float = 1.0,
+        repetition_penalty: float = 1.35,
+        is_v3: bool = False,
+        **kwargs
+    ):
+        x = self.ar_text_embedding(x)
+        x = x + self.bert_proj(bert_feature.transpose(1, 2))
+        x = self.ar_text_position(x)
+
+        # AR Decoder
+        y = prompts
+        
+        x_len = x.shape[1]
+        x_attn_mask = torch.zeros((x_len, x_len), dtype=torch.bool)
+        stop = False
+        curr_chunk_size = 0
+        # print(1111111,self.num_layers)
+
+        k_cache = None
+        v_cache = None
+        ###################  first step ##########################
+        if y is not None:
+            y_emb = self.ar_audio_embedding(y)
+            y_len = y_emb.shape[1]
+            prefix_len = y.shape[1]
+            y_pos = self.ar_audio_position(y_emb)
+            xy_pos = torch.concat([x, y_pos], dim=1)
+            ref_free = False
+        else:
+            y_emb = None
+            y_len = 0
+            prefix_len = 0
+            y_pos = None
+            xy_pos = x
+            y = torch.zeros(x.shape[0], 0, dtype=torch.int, device=x.device)
+            ref_free = True
+
+        bsz = x.shape[0]
+        src_len = x_len + y_len
+        x_attn_mask_pad = F.pad(
+            x_attn_mask,
+            (0, y_len),  ###xx的纯0扩展到xx纯0+xy纯1，(x,x+y)
+            value=True,
+        )
+        y_attn_mask = F.pad(  ###yy的右上1扩展到左边xy的0,(y,x+y)
+            torch.triu(torch.ones(y_len, y_len, dtype=torch.bool), diagonal=1),
+            (x_len, 0),
+            value=False,
+        )
+        xy_attn_mask = torch.concat([x_attn_mask_pad, y_attn_mask], dim=0)\
+                                                .unsqueeze(0)\
+                                                .expand(bsz*self.num_head, -1, -1)\
+                                                .view(bsz, self.num_head, src_len, src_len)\
+                                                .to(device=x.device, dtype=torch.bool)
+
+        for idx in tqdm(range(1500)):
+            if xy_attn_mask is not None:
+                xy_dec, k_cache, v_cache = self.t2s_transformer.process_prompt(xy_pos, xy_attn_mask, None)
+            else:
+                xy_dec, k_cache, v_cache = self.t2s_transformer.decode_next_token(xy_pos, k_cache, v_cache)
+
+            logits = self.ar_predict_layer(
+                xy_dec[:, -1]
+            )
+            
+            if idx == 0:
+                xy_attn_mask = None
+            if(idx<11):###至少预测出10个token不然不给停止（0.4s）
+                logits = logits[:, :-1]
+
+            samples = sample(
+                logits, y, top_k=top_k, top_p=top_p, repetition_penalty=repetition_penalty, temperature=temperature
+            )[0]
+
+            y = torch.concat([y, samples], dim=1)
+            curr_chunk_size += 1
+
+            if curr_chunk_size >= max_chunk_size:
+                # Save the internal rng state
+                rng_state = torch.get_rng_state()
+                cuda_rng_state = torch.cuda.get_rng_state()
+                # print(f"\nYielding: {y[:, -curr_chunk_size:]}")
+                yield y[:, -curr_chunk_size:]   
+                curr_chunk_size = 0
+                # Revert back to the original internal rng state
+                # Need to do this, because it is lost after yield
+                torch.set_rng_state(rng_state)
+                torch.cuda.set_rng_state(cuda_rng_state)
+
+            if early_stop_num != -1 and (y.shape[1] - prefix_len) > early_stop_num:
+                print("use early stop num:", early_stop_num)
+                stop = True
+
+            if torch.argmax(logits, dim=-1)[0] == self.EOS or samples[0, 0] == self.EOS:
+                stop = True
+
+            if stop:
+                if y.shape[1] == 0:
+                    y = torch.concat([y, torch.zeros_like(samples)], dim=1)
+                    print("bad zero prediction")
+            
+                # Adds the final EOS token. v3 doesn't need this, so skip added if using v3 model
+                if not (y == 1024).any() and not is_v3:
+                    print("No EOS on last chunk. Manually placing.")
+                    y = torch.concat((y, torch.tensor([[1024]], device="cuda" if torch.cuda.is_available() else "cpu")), dim=1)
+
+                if curr_chunk_size > 0:
+                    yield y[:, -curr_chunk_size:]
+                else:
+                    yield y[:, -1:]
+                
+                # print(f"Done Yielding! Final Y: {y[:, :]}")
+                print(f"T2S Decoding EOS [{prefix_len} -> {y.shape[1]}]")
+                break
+
+            ####################### update next step ###################################
+            y_emb = self.ar_audio_embedding(y[:, -1:])
+            xy_pos = y_emb * self.ar_audio_position.x_scale + self.ar_audio_position.alpha * self.ar_audio_position.pe[:, y_len + idx].to(dtype=y_emb.dtype,device=y_emb.device)
+
     def infer_panel(
         self,
         x: torch.LongTensor,  #####全部文本token
