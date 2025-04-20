@@ -18,12 +18,12 @@ class TTS:
         # self.vits_checkpoint = "GPT_SoVITS/pretrained_models/ayaka/Ayaka_e3_s1848_l32.pth"
         
         # v3
-        # self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/s1v3.ckpt"
-        # self.vits_checkpoint = "GPT_SoVITS/pretrained_models/s2Gv3.pth"
+        self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/s1v3.ckpt"
+        self.vits_checkpoint = "GPT_SoVITS/pretrained_models/s2Gv3.pth"
         
         # v2
-        self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"
-        self.vits_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth"
+        # self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"
+        # self.vits_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth"
         
         self.ref_audio = "audio/ayaka/ref_audio/10_audio.wav"
         
@@ -47,13 +47,13 @@ class TTS:
         self.streaming_audio = False
 
         # Runs a quick warmup to get everything setup for fast inference in the following calls to synthesize
-        self.synthesize("Hello world.", time.time(), is_warmup=True)
+        self.synthesize("Hello world.", is_warmup=True)
     
     def audio_stream(self, sr: int, start_time: float):
         """_Handles audio playback from synthesized data._"""
         with sd.OutputStream(samplerate=sr, channels=1, dtype="float32") as stream:
             while True:
-                sr, audio_data = self.audio_queue.get()
+                _, audio_data = self.audio_queue.get()
                 if audio_data is None:
                     break
                 stream.write(audio_data)
@@ -78,6 +78,7 @@ class TTS:
             "aux_ref_audio_paths": self.aux_ref_audios,
             "prompt_text": "Don't worry. Now that I've experienced the event once already, I won't be easily frightened. I'll see you later. Have a lovely chat with your friend.",
             "prompt_lang": "en",
+            "batch_size": 1,
             "temperature": 1,
             "top_k": 50,
             "top_p": 0.9,
@@ -116,7 +117,7 @@ class TTS:
 
 # Usage
 tts = TTS()
-tts.synthesize("Earth is the third planet from the Sun and the only known astronomical object to harbor life, characterized by its dynamic systems including oceans, atmosphere, and tectonic plates that continuously reshape its surface. Its unique position in the habitable zone of our solar system, along with its protective magnetic field and diverse ecosystems, has allowed for the evolution of millions of species over approximately 4.5 billion years. Despite covering only a fraction of the universe, Earth remains our irreplaceable home—a remarkable blue marble suspended in the vastness of space that continues to reveal its secrets through scientific discovery.", speed_factor=2)
+tts.synthesize("Earth is the third planet from the Sun and the only known astronomical object to harbor life, characterized by its dynamic systems including oceans, atmosphere, and tectonic plates that continuously reshape its surface. Its unique position in the habitable zone of our solar system, along with its protective magnetic field and diverse ecosystems, has allowed for the evolution of millions of species over approximately 4.5 billion years. Despite covering only a fraction of the universe, Earth remains our irreplaceable home—a remarkable blue marble suspended in the vastness of space that continues to reveal its secrets through scientific discovery.", speed_factor=0.9)
 # Wait until the streaming thread finishes playback before leaving the main thread since its a daemon thread
 while tts.streaming_audio:
     time.sleep(0.1)
