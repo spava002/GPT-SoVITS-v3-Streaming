@@ -18,12 +18,12 @@ class TTS:
         # self.vits_checkpoint = "GPT_SoVITS/pretrained_models/ayaka/Ayaka_e3_s1848_l32.pth"
         
         # v3
-        self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/s1v3.ckpt"
-        self.vits_checkpoint = "GPT_SoVITS/pretrained_models/s2Gv3.pth"
+        # self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/s1v3.ckpt"
+        # self.vits_checkpoint = "GPT_SoVITS/pretrained_models/s2Gv3.pth"
         
         # v2
-        # self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"
-        # self.vits_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth"
+        self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"
+        self.vits_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth"
         
         self.ref_audio = "audio/ayaka/ref_audio/10_audio.wav"
         
@@ -83,12 +83,13 @@ class TTS:
             "top_k": 50,
             "top_p": 0.9,
             "speed_factor": speed_factor,
-            "fragment_interval": 0.3, # This doesnt do anything with v2
+            "fragment_interval": 0.01, # This doesnt do anything with v2
             "seed": 42,
             "stream_output": True,
-            "max_chunk_size": 20,
+            "max_chunk_size": 30,
             # "sample_steps": 32, # Exclusive to v3
             # "super_sampling": True, # Exclusive to v3
+            # "text_split_method": "cut5"
         }
         
         
@@ -117,7 +118,7 @@ class TTS:
 
 # Usage
 tts = TTS()
-tts.synthesize("Earth is the third planet from the Sun and the only known astronomical object to harbor life, characterized by its dynamic systems including oceans, atmosphere, and tectonic plates that continuously reshape its surface. Its unique position in the habitable zone of our solar system, along with its protective magnetic field and diverse ecosystems, has allowed for the evolution of millions of species over approximately 4.5 billion years. Despite covering only a fraction of the universe, Earth remains our irreplaceable home—a remarkable blue marble suspended in the vastness of space that continues to reveal its secrets through scientific discovery.", speed_factor=0.9)
+tts.synthesize("Earth is the third planet from the Sun and the only known astronomical object to harbor life, characterized by its dynamic systems including oceans, atmosphere, and tectonic plates that continuously reshape its surface. Its unique position in the habitable zone of our solar system, along with its protective magnetic field and diverse ecosystems, has allowed for the evolution of millions of species over approximately 4.5 billion years. Despite covering only a fraction of the universe, Earth remains our irreplaceable home—a remarkable blue marble suspended in the vastness of space that continues to reveal its secrets through scientific discovery.")
 # Wait until the streaming thread finishes playback before leaving the main thread since its a daemon thread
 while tts.streaming_audio:
     time.sleep(0.1)
