@@ -18,12 +18,12 @@ class TTS:
         # self.vits_checkpoint = "GPT_SoVITS/pretrained_models/ayaka/Ayaka_e3_s1848_l32.pth"
         
         # v3
-        # self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/s1v3.ckpt"
-        # self.vits_checkpoint = "GPT_SoVITS/pretrained_models/s2Gv3.pth"
+        self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/s1v3.ckpt"
+        self.vits_checkpoint = "GPT_SoVITS/pretrained_models/s2Gv3.pth"
         
         # v2
-        self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"
-        self.vits_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth"
+        # self.t2s_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"
+        # self.vits_checkpoint = "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth"
         
         self.ref_audio = "audio/ayaka/ref_audio/ref1.wav"
         
