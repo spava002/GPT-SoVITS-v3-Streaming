@@ -7,7 +7,7 @@ This version introduces **streaming audio support**, enabling low-latency text-t
 
 ## How Can I Use It?
 
-**⚠️It is HIGHLY recommended to run this project using PyTorch with CUDA support (although it is possible with CPU, but much slower!).⚠️**
+**⚠️It is HIGHLY recommended to run this project using PyTorch with CUDA support (it is possible with CPU, but much slower!).⚠️**
 Please install the appropriate version of PyTorch based on your CUDA version at: https://pytorch.org/
 
 ---
