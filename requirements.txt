@@ -18,3 +18,4 @@ jieba_fast
 wordsegment
 g2p_en
 pyopenjtalk
+sounddevice
